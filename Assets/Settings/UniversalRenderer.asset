@@ -36,7 +36,7 @@ MonoBehaviour:
     Material: {fileID: -876546973899608171, guid: dd6f106d62ad0ae4cb1d46c000ffe6c5, type: 3}
     LayerMask:
       serializedVersion: 2
-      m_Bits: 247
+      m_Bits: 4294967295
     RenderQueueType: 1
     WriteDepth: 0
     DepthCompareFunction: 4
