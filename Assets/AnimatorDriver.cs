@@ -29,6 +29,38 @@ public class AnimatorDriver : MonoBehaviour
     }
 
     [SerializeField]
+    private string _UpParameterName = "Up";
+    public string UpParameterName
+    {
+        get => _UpParameterName;
+        set => _UpParameterName = value;
+    }
+
+    [SerializeField]
+    private string _DownParameterName = "Down";
+    public string DownParameterName
+    {
+        get => _DownParameterName;
+        set => _DownParameterName = value;
+    }
+
+    [SerializeField]
+    private string _LeftParameterName = "Left";
+    public string LeftParameterName
+    {
+        get => _LeftParameterName;
+        set => _LeftParameterName = value;
+    }
+
+    [SerializeField]
+    private string _RightParameterName = "Right";
+    public string RightParameterName
+    {
+        get => _RightParameterName;
+        set => _RightParameterName = value;
+    }
+
+    [SerializeField]
     private Transform _OriginObject;
     public Transform OriginObject
     {
@@ -62,8 +94,8 @@ public class AnimatorDriver : MonoBehaviour
     }
 
     [SerializeField]
-    private float _Rate = 16f;
-    public float Rate
+    private Vector2 _Rate = new Vector2(16f, 16f);
+    public Vector2 Rate
     {
         get => _Rate;
         set => _Rate = value;
@@ -83,11 +115,42 @@ public class AnimatorDriver : MonoBehaviour
         return GetComponent<Animator>();
     }
 
-    void Start()
+    private static Vector4 GetLURD(Vector2 xy) => new Vector4(
+        Mathf.Clamp01(xy.x),
+        Mathf.Clamp01(xy.y),
+        Mathf.Clamp01(-xy.x),
+        Mathf.Clamp01(-xy.y));
+
+    private static Vector2 LERP_XY(Vector2 a, Vector2 b, Vector2 t)
     {
+        return new Vector2(Mathf.Lerp(a.x, b.x, t.x), Mathf.Lerp(a.y, b.y, t.y));
+    }
+
+    private static Vector4 LERP_LURD_XY(Vector4 a, Vector4 b, Vector2 t)
+    {
+        return new Vector4(
+            Mathf.Lerp(a.x, b.x, t.x),
+            Mathf.Lerp(a.y, b.y, t.y),
+            Mathf.Lerp(a.z, b.z, t.x),
+            Mathf.Lerp(a.w, b.w, t.y));
+    }
+
+    private static TVector TryLerp<TVector, TInterpolant>(
+        System.Func<TVector, TVector, TInterpolant, TVector> func,
+        TVector? a,
+        TVector b,
+        TInterpolant t)
+        where TVector : struct
+    {
+        return func(a ?? b, b, t);
     }
 
     private Vector2? _PreviousXY;
+    private Vector4? _PreviousLURD;
+
+    void Start()
+    {
+    }
 
     void Update()
     {
@@ -102,9 +165,17 @@ public class AnimatorDriver : MonoBehaviour
         var norm_distance = norm_difference.magnitude;
         var influence = _InfluenceCurve.Evaluate(norm_distance);
         var xy = influence * new Vector2(norm_difference.x, norm_difference.y);
-        var lerpxy = Vector2.Lerp(_PreviousXY ?? xy, xy, _Rate * Time.deltaTime);
+        var t = _Rate * Time.deltaTime;
+        var lerpxy = TryLerp(LERP_XY, _PreviousXY, xy, t);
         animator.SetFloat(_XParameterName, lerpxy.x);
         animator.SetFloat(_YParameterName, lerpxy.y);
+        var lurd = GetLURD(xy);
+        var lerplurd = TryLerp(LERP_LURD_XY, _PreviousLURD, lurd, t);
+        animator.SetFloat(_LeftParameterName, Mathf.Clamp01(lerplurd.x));
+        animator.SetFloat(_UpParameterName, Mathf.Clamp01(lerplurd.y));
+        animator.SetFloat(_RightParameterName, Mathf.Clamp01(lerplurd.z));
+        animator.SetFloat(_DownParameterName, Mathf.Clamp01(lerplurd.w));
         _PreviousXY = lerpxy;
+        _PreviousLURD = lerplurd;
     }
 }
